@@ -16,7 +16,9 @@
 // TODO 1: Firm up pollbusy and enable latch
 // TODO 2: Add comments describing everything.
 // TODO 3: Look at write power. Status Reg 3
-// TODO 4: Prepend names of defines and functions with w25q
+
+// NOTE This file could probably make use of inline macros to reduce overhead
+// of frequently called functions
 
 
 /**************************************************************************/
@@ -39,7 +41,11 @@ static void _w25qWriteEnableLatch(bool value)
 
 /**************************************************************************/
 /*!
-	@brief
+	@brief Powers up or down the flash memory chip. Power down mode
+          can be used to save power. The only command that is accepted
+          during power down is the power up command.
+
+   NOTE: Could probably make _w25qSendCommand(cmd, buffer, len)
 */
 /**************************************************************************/
 static void _w25qSetPowerMode(uint8_t cmd)
@@ -54,7 +60,13 @@ static void _w25qSetPowerMode(uint8_t cmd)
 
 /**************************************************************************/
 /*!
-	@brief
+	@brief Read a status register (1-3) and return the value
+
+   @param[in] cmd
+              The cmd to send
+
+   @return buf
+           The value read from the status register
 */
 /**************************************************************************/
 static uint8_t _w25qReadStatusReg(uint8_t cmd)
@@ -72,18 +84,18 @@ static uint8_t _w25qReadStatusReg(uint8_t cmd)
 
 /**************************************************************************/
 /*!
-	@brief
+	@brief Polls the busy bit continuesly untill it has been cleared
 */
 /**************************************************************************/
 static void _w25qPollBusyBit()
 {
-   while (_w25qReadStatusReg(W25Q_RD_STAT1) != 0);
+   while ((_w25qReadStatusReg(W25Q_RD_STAT1) & 0x01) != 0);
 }
 
 
 /**************************************************************************/
 /*!
-	@brief
+	@brief Write a byte of data to a status register (1-3)
 */
 /**************************************************************************/
 static void _w25qWriteStatusReg(uint8_t cmd, uint8_t data)
@@ -102,6 +114,11 @@ static void _w25qWriteStatusReg(uint8_t cmd, uint8_t data)
 /**************************************************************************/
 /*!
    @brief Initializes the SPI and Winbond device
+
+   1) Set up SPI to mode 3
+   2) Power up the chip just in case
+   3) Disable Enable latch also just in case
+   4) Set the output power to 25% (Default)
 */
 /**************************************************************************/
 void w25qInit()
@@ -122,9 +139,10 @@ void w25qInit()
 
 /**************************************************************************/
 /*!
-   @brief Receives the manufactures ID from the W25QXX
+   @brief Reads the manufactures ID from the W25QXX
 
-   @return  Manufacturers device id
+   @return  command[0]
+            The result from the read operation. (Expect 0xEF)
 */
 /**************************************************************************/
 uint8_t w25qReadDeviceID()
@@ -143,13 +161,13 @@ uint8_t w25qReadDeviceID()
 
 /*********************************d*****************************************/
 /*!
-   @brief Reads a Page (256 Bytes) of data from the memory chip
+   @brief Reads a Page (256 Bytes) of data
 
    @param[in]  rdBuf
- 			      Pointer to read buffer into from SPI
+ 			      Buffer array to store data
 
    @param[in]  address
-               24 bit Address to read page from.
+               Address to start reading from. Only uses first three bytes
 */
 /**************************************************************************/
 void w25qReadPage(uint8_t rdBuf[], uint32_t address)
@@ -170,8 +188,11 @@ void w25qReadPage(uint8_t rdBuf[], uint32_t address)
 
 /**************************************************************************/
 /*!
-   @brief Reads out a single byte from a full page. Full page is read
-   since the hardware enforces this anyways.
+   @brief Reads a single byte from a full page. Full page is read
+          since the hardware enforces this anyways.
+
+   NOTE: This is really just a convience function that SHOULD be removed
+   if code size becomes an issue.
 */
 /**************************************************************************/
 uint8_t w25qReadByte(uint32_t address, uint8_t offset)
@@ -190,10 +211,11 @@ uint8_t w25qReadByte(uint32_t address, uint8_t offset)
    of the page and overwrite data there.
 
    @param[in]  wrBuf
- 				   Pointer to buffer to write out SPI
+ 				   Buffer array to write to flash
 
    @param[in]  address
-               24 bit Address to write page to.
+               Address to start writing at. Does not need to be page
+               aligned.
 */
 /**************************************************************************/
 void w25qWritePage(uint8_t wrBuf[], uint32_t address, uint16_t length)
@@ -217,7 +239,7 @@ void w25qWritePage(uint8_t wrBuf[], uint32_t address, uint16_t length)
    @brief Erases a Sector(4k) of memory. Must be done in order to rewrite
 
    @param[in]  address
-               Address to the start of sector to erase
+               Address to the start of the sector to erase.
 */
 /**************************************************************************/
 void w25qEraseSector(uint32_t address)
