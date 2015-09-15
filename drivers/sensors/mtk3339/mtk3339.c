@@ -14,7 +14,7 @@ static struct gps_t GPS;
       Pointer to start of nmea string message
 */
 /**************************************************************************/
-static bool _mtk3339ParseRMC(char *p)
+static bool _mtk3339ParseRMC(char *nmea)
 {
    // UTC Time
 	p = strchr(p, ',')+1;
@@ -77,7 +77,7 @@ static bool _mtk3339ParseRMC(char *p)
       Pointer to start of nmea string message
 */
 /**************************************************************************/
-static bool _mtk3339ParseGGA(char *p)
+static bool _mtk3339ParseGGA(char *nmea)
 {
    // UTC Time
 	p = strchr(p, ',')+1;
@@ -120,13 +120,17 @@ static bool _mtk3339ParseGGA(char *p)
    printf("GGA - Time %d, Latitude %d, Longitude %d, alt %d%s",
       (int)GPS.time, (int)GPS.lat, (int)GPS.lon, (int)GPS.alt, CFG_PRINTF_NEWLINE);
 #endif
-   return false;
+   return true;
 }
 
 /**************************************************************************/
 /*!
    @brief Sends the starting NMEA strings to setup refresh rate of 1Hz and output
    of RMC
+
+	1) Sets update to 1Hz
+	2) Sets fix update rate to 1Hz
+	3) Sets NMEA output to RMC only
 */
 /**************************************************************************/
 void mtk3339Init()
@@ -152,8 +156,8 @@ void mtk3339Init()
 /*!
    @brief Repacks gps struct into an array of bytes
 
-   @param[in] data
-      Needs 6 bytes
+   @param[in] buffer
+      Serializes 6 floats into 24 byte buffer
 */
 /**************************************************************************/
 void mtk3339PackageData(uint8_t buffer[])
@@ -176,7 +180,7 @@ void mtk3339PackageData(uint8_t buffer[])
    Right now it just says theres data if its seen a '*'.
 
    @return bool
-      True if we actually parsed data
+      True if we actually parsed a nmea sentence.
 */
 /**************************************************************************/
 bool mtk3339ParseNMEA()
@@ -196,5 +200,6 @@ bool mtk3339ParseNMEA()
    }
 
    nmeaBufferRdy = false;
-   return true;
+   // return true;
+   return false;
 }
