@@ -8,7 +8,13 @@ extern volatile uint32_t  I2CReadLength, I2CWriteLength;
 
 /**************************************************************************/
 /*!
-    @brief  Writes an 8 bit values over I2C
+   @brief  Writes a byte to the device over I2C
+
+   @param[in] reg
+              The register to write data.
+
+   @param[in] value
+              The data to write.
 */
 /**************************************************************************/
 static void _bno055Write8 (uint8_t reg, uint8_t value)
@@ -27,7 +33,13 @@ static void _bno055Write8 (uint8_t reg, uint8_t value)
 
 /**************************************************************************/
 /*!
-    @brief  Reads an 8 bit values over I2C
+   @brief Reads a byte from the device
+
+   @param reg
+          The register to read.
+
+   @return I2CSlaveBuffer
+           The value read from the register
 */
 /**************************************************************************/
 static uint8_t _bno055Read8(uint8_t reg)
@@ -49,7 +61,16 @@ static uint8_t _bno055Read8(uint8_t reg)
 
 /**************************************************************************/
 /*!
-@brief  Reads a N bytes values over I2C
+   @brief  Reads a N bytes values over I2C
+
+   @param[in] startReg
+              The register to start reading from.
+
+   @param[in] buf
+              Buffer to put values into
+
+   @param[in] length
+              The number of register to read
 */
 /**************************************************************************/
 void bno055ReadLength(uint8_t startReg, uint8_t buf[], uint8_t length)
@@ -77,39 +98,53 @@ void bno055ReadLength(uint8_t startReg, uint8_t buf[], uint8_t length)
 /*!
    @brief  Initializes the BNO055 Module
 
-   @notice Mode   = NDOF
-           ClKSRC = XTAL Clock
+   NOTE: Enumerate this init process
+
+   1) Mode   = NDOF
+   2) Reset system
+   3) ClKSRC = XTAL Clock
+   4) Check that we have the proper device
+   5)
 */
 /**************************************************************************/
 bool bno055Init()
 {
    /* Set Mode to Config */
    _bno055Write8(BNO055_RA_OPR_MODE, BNO055_MODE_CNFG);
-   systickDelay(10);
+   systickDelay(CFG_SYSTICK_100MS_DELAY);
 
    /* Reset System */
    _bno055Write8(BNO055_RA_SYS_TRGR, BNO055_SYS_RST);
-   systickDelay(10);
+   systickDelay(CFG_SYSTICK_100MS_DELAY);
 
    /* Check the Device ID */
-   uint8_t blah;
-   while ((blah = _bno055Read8(BNO055_RA_DEV_ID)) != BNO055_ID) {
-      printf("Device ID mismatch %x\r\n", blah);
-      systickDelay(10);
+   // NOTE: This is an infinite loop. Should return false and handle error
+   uint8_t deviceID;
+
+   while ((deviceID = _bno055Read8(BNO055_RA_DEV_ID)) != BNO055_ID)
+   {
+      #ifdef CFG_BNO055_DEBUG
+         printf("Device ID mismatch %x%s", deviceID, CFG_PRINTF_NEWLINE);
+      #endif
+
+      systickDelay(CFG_SYSTICK_100MS_DELAY);
    }
-   printf("Device ID match %X\r\n", _bno055Read8(BNO055_RA_DEV_ID));
+
+   #ifdef CFG_BNO055_DEBUG
+      printf("Device ID match %X%s", deviceID, CFG_PRINTF_NEWLINE);
+   #endif
 
    /* Set Power Mode */
    _bno055Write8(BNO055_RA_PWR_MODE, 0x00);
-   systickDelay(10);
+   systickDelay(CFG_SYSTICK_100MS_DELAY);
 
    /* Set Page Number */
    _bno055Write8(BNO055_RA_PAGE_SEL, 0x00);
-   systickDelay(10);
+   systickDelay(CFG_SYSTICK_100MS_DELAY);
 
    /* Set SYSTEM TRIGGER back to 0*/
    _bno055Write8(BNO055_RA_SYS_TRGR, 0x00);
-   systickDelay(10);
+   systickDelay(CFG_SYSTICK_100MS_DELAY);
 
    /* Use External Clock Source */
    // _bno055Write8(BNO055_RA_SYS_TRGR, BNO055_USE_XTAL);
@@ -117,16 +152,17 @@ bool bno055Init()
 
    // Set Mode (OPR_MODE, NDOF)
    _bno055Write8(BNO055_RA_OPR_MODE, BNO055_MODE_NDOF);
-   systickDelay(10);
+   systickDelay(CFG_SYSTICK_100MS_DELAY);
 
    return true;
 }
 
 /**************************************************************************/
 /*!
-   @brief  Read Roll Pitch Yaw
+   @brief  Read Euler angles from device
 
-   @notice
+   @param[in] rpy
+              Buffer to hold roll pitch yaw
 */
 /**************************************************************************/
 void bno055ReadEuler(double rpy[])
@@ -145,16 +181,17 @@ void bno055ReadEuler(double rpy[])
    rpy[2] = (double)data[2] / 16.0;
 
    #ifdef CFG_BNO055_DEBUG
-      printf("Roll: %d, Pitch: %d, Yaw: %d \n\r",
-         (int)rpy[0], (int)rpy[1], (int)rpy[2]);
+      printf("Roll: %d, Pitch: %d, Yaw: %d%s",
+         (int)rpy[0], (int)rpy[1], (int)rpy[2], CFG_PRINTF_NEWLINE);
    #endif
 }
 
 /**************************************************************************/
 /*!
-   @brief  Read Roll Pitch Yaw
+   @brief  Read quaternions x, y, z, w
 
-   @notice
+   @param quat
+          Buffer to read quaterion values into.
 */
 /**************************************************************************/
 void bno055ReadQuat(double quat[])
@@ -175,14 +212,18 @@ void bno055ReadQuat(double quat[])
    quat[3] = (double)data[3] / 16.0;
 
    #ifdef CFG_BNO055_DEBUG
-      printf("W: %d, X: %d, Y: %d Z: %d\n\r",
-         (int)quat[0], (int)quat[1], (int)quat[2], (int)quat[3]);
+      printf("W: %d, X: %d, Y: %d Z: %d%s",
+         (int)quat[0], (int)quat[1], (int)quat[2], (int)quat[3],
+         CFG_PRINTF_NEWLINE);
    #endif
 }
 
 /**************************************************************************/
 /*!
    @brief  Read Linear Acceleration.
+
+   @param laccel
+          Buffer to read laccel values into
 */
 /**************************************************************************/
 void bno055ReadLinAccel(double laccel[])
@@ -210,6 +251,9 @@ void bno055ReadLinAccel(double laccel[])
 /*!
    @brief  Read raw linear acceleration and euler angles from IMU
    Requires 12 bytes
+
+   @param[in] buf
+              Buffer to read 12 bytes of raw data into.
 */
 /**************************************************************************/
 void bno055PackageData(uint8_t buf[])

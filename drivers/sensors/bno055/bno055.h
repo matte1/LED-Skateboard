@@ -53,7 +53,6 @@
 #define BNO055_EUL_IN_DEGREES 0x00  	// Settling time ~ 25ms
 
 bool bno055Init();
-
 void bno055ReadLength(uint8_t startReg, uint8_t values[], uint8_t length);
 void bno055ReadEuler(double rpy[]);
 void bno055ReadQuat(double quat[]);
