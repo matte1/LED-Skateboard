@@ -12,7 +12,6 @@
 #include "drivers/sensors/bno055/bno055.h"
 #include "drivers/sensors/mtk3339/mtk3339.h"
 
-
 #ifdef CFG_W25QXX
 	#define BLOCKSIZE		W25Q_PAGESIZE
 	#define SECTORSIZE 	W25Q_SECTORSIZE
@@ -24,7 +23,6 @@
 /* BLOCK TYPE DEFINES */
 #define BLOCK_TYPE_INODE	2
 
-
 typedef struct {
 	uint32_t nextBlock;
 	uint32_t lastInode;
@@ -34,11 +32,9 @@ typedef struct {
 
 /* File system object structure */
 uint8_t ulogInit();
-uint8_t ulogWriteBlock(uint8_t *buffer);
 void ulogDeleteFile();
 void ulogNewFile();
-
-uint8_t ulogBufferData(uint8_t *data, int length);
+void ulogBufferData(uint8_t *data, int length);
 void ulogFlushData();
 
 /* Higher level APIs */

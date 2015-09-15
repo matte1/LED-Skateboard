@@ -21,6 +21,9 @@ static ULOGFS uLogFS;
 	@brief This assumes a that the next free block is unkown and scans from
    beginning of memory trying to find the next free sector.
 
+   NOTE: This is defenitely broken... If we unluckily get a sector that has
+   data in put starts with 0xFF then were SOL.
+
 	@return address
          The address of the next avaliable block
 */
@@ -41,9 +44,11 @@ static uint32_t _ulogNextFreeBlock()
 	@brief This will be called during system init in order to perpare for
    logging data. It will set a few variable such as nextBlock and numBlocks
 
-   TODO: Add return codes for error handling. This could just return true
-   if there is room avaliable and false if not
-   @return 0
+   TODO: 1) Find where the last Inode is at.
+         2) Add return codes for error handling. This could just return true
+         if there is room avaliable and false if not
+
+   @return 1
 */
 /**************************************************************************/
 uint8_t ulogInit()
@@ -61,29 +66,27 @@ uint8_t ulogInit()
 /**************************************************************************/
 /*!
    @brief Writes buffer ‘buffer’ of size ‘size’, which represents PART of a file’s
-   content, to the file system. Note that this must be used after ulog_openFile
-   without any other intervening calls.
+   content to the file system.
 
    @NOTE: Need to flush data on the very last BufferData that is called
 
    @param[in] data
-         Data to write to the file
+         Data to copy to the internal buffer
 
    @param[in] length
-         Data to write to the file
-
-   @return uint8_t
-      	Returns a status message.
+         Length of data to copy to the internal buffer
 */
 /**************************************************************************/
-uint8_t ulogBufferData(uint8_t *data, int length)
+void ulogBufferData(uint8_t *data, int length)
 {
    int spaceLeft = BLOCKSIZE - uLogFS.bufferIndex;
 
-   // printf("Buffer, nextBlock %u\r\n", (unsigned int)uLogFS.nextBlock);
-   // printf("Spaceleft %u\r\n", (unsigned int)spaceLeft);
-   // printf("length %u\r\n", (unsigned int)length);
-   // printf("index %u\r\n", (unsigned int)uLogFS.bufferIndex);
+   #ifdef CFG_ULOGFS_DEBUG
+      printf("Buffer, nextBlock %u\r\n", (unsigned int)uLogFS.nextBlock);
+      printf("Spaceleft %u\r\n", (unsigned int)spaceLeft);
+      printf("length %u\r\n", (unsigned int)length);
+      printf("index %u\r\n", (unsigned int)uLogFS.bufferIndex);
+   #endif
 
    // If we have enough room to copy all the data into the buffer do so
    // Otherwise copy what we can and write it to flash
@@ -100,8 +103,6 @@ uint8_t ulogBufferData(uint8_t *data, int length)
       uLogFS.bufferIndex = length - spaceLeft;
 	   uLogFS.nextBlock += BLOCKSIZE;
    }
-
-   return 0;
 }
 
 /**************************************************************************/
@@ -112,9 +113,10 @@ uint8_t ulogBufferData(uint8_t *data, int length)
 /**************************************************************************/
 void ulogFlushData()
 {
-   printf("\n\rbufferIndex %u\n\r", (unsigned int)uLogFS.bufferIndex);
-   printf("nextBlock %u\n\r", (unsigned int)uLogFS.nextBlock);
-
+   #ifdef CFG_ULOGFS_DEBUG
+      printf("\r\ncurrentBlock %u\n\r", (unsigned int)uLogFS.nextBlock);
+      printf("bufferIndex %u\n\r", (unsigned int)uLogFS.bufferIndex);
+   #endif
 
    if (uLogFS.bufferIndex > 0)
    {
@@ -153,11 +155,12 @@ void ulogNewFile()
       uLogFS.nextBlock = ((int)(uLogFS.nextBlock / SECTORSIZE) + 1) * SECTORSIZE;
 
    // Create New file inode for this file
-   printf("Created file at %u%s", (unsigned int)uLogFS.nextBlock, CFG_PRINTF_NEWLINE);
+   #ifdef CFG_ULOGFS_DEBUG
+      printf("Created file at %u%s", (unsigned int)uLogFS.nextBlock, CFG_PRINTF_NEWLINE);
+      printf("Last Inode at %u%s", (unsigned int)uLogFS.lastInode, CFG_PRINTF_NEWLINE);
+   #endif
+
    w25qWritePage(buf, uLogFS.nextBlock, 5);
-
-
-   printf("Last Inode at %u%s", (unsigned int)uLogFS.lastInode, CFG_PRINTF_NEWLINE);
 
 	buf[5] = (uLogFS.nextBlock >> 24) & 0xFF;
    buf[6] = (uLogFS.nextBlock >> 16) & 0xFF;
@@ -194,11 +197,8 @@ void ulogDeleteFile()
 
 /**************************************************************************/
 /*!
-   @brief private helper method for scanning the memory looking for last used
-   block. This should only be used on boot to initialize the cache in SRAM
-
-   @return address
-         The address of the next avaliable block
+   @brief Goes through file system and prints out all files and the
+          time that they were created.
 */
 /**************************************************************************/
 void ulogListFiles()
@@ -237,7 +237,10 @@ void ulogListFiles()
 
 /**************************************************************************/
 /*!
-   @brief Prints out all blocks of data
+   @brief Prints out all blocks of data starting at the fist byte.
+
+   TODO: Fix issue where a good page that unluckily starts with 0xFF stops
+   progress.
 */
 /**************************************************************************/
 void ulogPrintFileSystem()
