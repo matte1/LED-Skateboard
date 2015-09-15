@@ -160,7 +160,8 @@
 
     -----------------------------------------------------------------------*/
     #ifdef CFG_BRD_LPC1114_REFDESIGN
-      #define CFG_SYSTICK_DELAY_IN_MS     (10)
+      #define CFG_SYSTICK_DELAY_IN_MS     (1)
+      #define CFG_SYSTICK_100MS_DELAY     (100 / CFG_SYSTICK_DELAY_IN_MS)
     #endif
 /*=========================================================================*/
 
