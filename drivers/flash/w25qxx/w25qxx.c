@@ -13,14 +13,6 @@
 
 #include "w25qxx.h"
 
-// TODO 1: Firm up pollbusy and enable latch
-// TODO 2: Add comments describing everything.
-// TODO 3: Look at write power. Status Reg 3
-
-// NOTE This file could probably make use of inline macros to reduce overhead
-// of frequently called functions
-
-
 /**************************************************************************/
 /*!
 	@brief Enables/Disables the write bit in Status Register 1
@@ -124,16 +116,16 @@ static void _w25qWriteStatusReg(uint8_t cmd, uint8_t data)
 void w25qInit()
 {
    sspInit(0, sspClockPolarity_Low, sspClockPhase_RisingEdge);
-   systickDelay(10);
+   systickDelay(CFG_SYSTICK_100MS_DELAY);
 
    _w25qSetPowerMode(W25Q_PWR_UP);
-   systickDelay(10);
+   systickDelay(CFG_SYSTICK_100MS_DELAY);
 
    _w25qWriteEnableLatch(false);
-   systickDelay(10);
+   systickDelay(CFG_SYSTICK_100MS_DELAY);
 
    _w25qWriteStatusReg(W25Q_WR_STAT3, 0x60);
-   systickDelay(10);
+   systickDelay(CFG_SYSTICK_100MS_DELAY);
 }
 
 
