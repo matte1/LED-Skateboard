@@ -3,12 +3,14 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "projectconfig.h"
 #include "core/systick/systick.h"
-#include "drivers/flash/w25qxx/w25qxx.h"
+#include "core/uart/uart.h"
 
-/* Sensor Driver Files */
+/* Driver Files */
+#include "drivers/flash/w25qxx/w25qxx.h"
 #include "drivers/sensors/bno055/bno055.h"
 #include "drivers/sensors/mtk3339/mtk3339.h"
 
@@ -21,7 +23,7 @@
 #define ULOG_INODE_LEN		9
 
 /* BLOCK TYPE DEFINES */
-#define BLOCK_TYPE_INODE	2
+#define BLOCK_TYPE_INODE	0x01
 
 typedef struct {
 	uint32_t nextBlock;

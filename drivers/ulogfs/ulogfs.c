@@ -57,8 +57,10 @@ uint8_t ulogInit()
    uLogFS.bufferIndex = 0;
    uLogFS.lastInode = 0;
 
-   printf("Init Block: %u%s", (unsigned int)uLogFS.nextBlock,
-      CFG_PRINTF_NEWLINE);
+   #ifdef CFG_ULOGFS_DEBUG
+      printf("Init Block: %u%s", (unsigned int)uLogFS.nextBlock,
+         CFG_PRINTF_NEWLINE);
+   #endif
 
    return 1;
 }
@@ -81,13 +83,6 @@ void ulogBufferData(uint8_t *data, int length)
 {
    int spaceLeft = BLOCKSIZE - uLogFS.bufferIndex;
 
-   #ifdef CFG_ULOGFS_DEBUG
-      printf("Buffer, nextBlock %u\r\n", (unsigned int)uLogFS.nextBlock);
-      printf("Spaceleft %u\r\n", (unsigned int)spaceLeft);
-      printf("length %u\r\n", (unsigned int)length);
-      printf("index %u\r\n", (unsigned int)uLogFS.bufferIndex);
-   #endif
-
    // If we have enough room to copy all the data into the buffer do so
    // Otherwise copy what we can and write it to flash
    if (spaceLeft >= length)
@@ -99,7 +94,7 @@ void ulogBufferData(uint8_t *data, int length)
    {
       memcpy(&uLogFS.buffer[uLogFS.bufferIndex], data, spaceLeft);
 	   w25qWritePage(uLogFS.buffer, uLogFS.nextBlock, BLOCKSIZE);
-      memcpy(uLogFS.buffer, data + length - spaceLeft, length - spaceLeft);
+      memcpy(uLogFS.buffer, &data[spaceLeft], length - spaceLeft);
       uLogFS.bufferIndex = length - spaceLeft;
 	   uLogFS.nextBlock += BLOCKSIZE;
    }
@@ -113,14 +108,8 @@ void ulogBufferData(uint8_t *data, int length)
 /**************************************************************************/
 void ulogFlushData()
 {
-   #ifdef CFG_ULOGFS_DEBUG
-      printf("\r\ncurrentBlock %u\n\r", (unsigned int)uLogFS.nextBlock);
-      printf("bufferIndex %u\n\r", (unsigned int)uLogFS.bufferIndex);
-   #endif
-
    if (uLogFS.bufferIndex > 0)
    {
-      printf("Flushing\r\n");
    	w25qWritePage(uLogFS.buffer, uLogFS.nextBlock, uLogFS.bufferIndex);
       uLogFS.nextBlock += BLOCKSIZE;
       uLogFS.bufferIndex = 0;
@@ -143,8 +132,7 @@ void ulogNewFile()
 
    buf[0] = BLOCK_TYPE_INODE;
 
-   // TODO: Add GPS Time, Date if possible
-   // TODO: CREATE MACRO FOR PACKING/UNPACKING bytes to uint32
+   // Write Start Time
 	buf[1] = (systime >> 24) & 0xFF;
    buf[2] = (systime >> 16) & 0xFF;
    buf[3] = (systime >> 8) & 0xFF;
@@ -154,18 +142,25 @@ void ulogNewFile()
    if (uLogFS.nextBlock % SECTORSIZE != 0)
       uLogFS.nextBlock = ((int)(uLogFS.nextBlock / SECTORSIZE) + 1) * SECTORSIZE;
 
-   // Create New file inode for this file
-   #ifdef CFG_ULOGFS_DEBUG
-      printf("Created file at %u%s", (unsigned int)uLogFS.nextBlock, CFG_PRINTF_NEWLINE);
-      printf("Last Inode at %u%s", (unsigned int)uLogFS.lastInode, CFG_PRINTF_NEWLINE);
-   #endif
-
    w25qWritePage(buf, uLogFS.nextBlock, 5);
 
 	buf[5] = (uLogFS.nextBlock >> 24) & 0xFF;
    buf[6] = (uLogFS.nextBlock >> 16) & 0xFF;
    buf[7] = (uLogFS.nextBlock >> 8) & 0xFF;
    buf[8] =  uLogFS.nextBlock & 0xFF;
+
+   // TODO: Add GPS Time, Date if possible
+   // if (gps_available)
+   // {
+   //    buf[9] =
+   //    buf[10] =
+   //    buf[11] =
+   //    buf[12] =
+   //    buf[13] =
+   //    buf[14] =
+   //    buf[15] =
+   //    buf[16] =
+   // }
 
    // Write this inodes address back to the lastInode's pointer to this file
    if (uLogFS.nextBlock != 0)
@@ -177,23 +172,6 @@ void ulogNewFile()
    uLogFS.nextBlock += BLOCKSIZE;
 }
 
-
-/**************************************************************************/
-/*!
-   @brief deletes a file and marks its blocks as free on disk. This will be
-   done by writing a single byte to the inode of the file to mark its file as deleted.
-   We cannot simply delete it because the smallest erase we can do is 4096 bytes
-
-   @TODO: DO, This will probably look like an Inode being the start of a file
-   with Sector enforcement meaning allocate a sector at a time for a file so its
-   easier to cleanup in the end. Meaning worst case scenario 4k loss of space.
-
-*/
-/**************************************************************************/
-void ulogDeleteFile()
-{
-
-}
 
 /**************************************************************************/
 /*!
@@ -239,24 +217,25 @@ void ulogListFiles()
 /*!
    @brief Prints out all blocks of data starting at the fist byte.
 
+   TODO: Test this by writing chars out to file. This will create a more compact
+   binary file thats easier to manipulate.
+
    TODO: Fix issue where a good page that unluckily starts with 0xFF stops
    progress.
 */
 /**************************************************************************/
 void ulogPrintFileSystem()
 {
-   int i;
+   int ndx;
    uint32_t address = 0;
 	uint8_t buf[BLOCKSIZE];
 
    w25qReadPage(buf, address);
 
-   while (buf[0] != 0xFF && address < CFG_W25QXX_MAX_ADDRESS)
+   for (ndx = 0; ndx < 5; ndx++)
    {
-      for (i = 0; i < BLOCKSIZE; i++)
-         printf("%X ", buf[i]);
+      uartSend(buf, BLOCKSIZE);
 
-      printf("%s%s", CFG_PRINTF_NEWLINE, CFG_PRINTF_NEWLINE);
       address += BLOCKSIZE;
       w25qReadPage(buf, address);
    }
