@@ -86,7 +86,12 @@ void testFlash()
 
    printf("\r\n\r\n");
 
+   uint32_t time1 = systickGetMillisecondsActive();
    w25qWritePage(buffer, 0, 256);
+   uint32_t time2 = systickGetMillisecondsActive();
+
+   printf("Delta Time: %u\r\n\n", (unsigned int)(time2 - time1));
+
    memset(buffer, 0x00, 256);
    w25qReadPage(buffer, 0);
 
@@ -100,12 +105,9 @@ void testFlash()
 void testIMU()
 {
    double rpy[3];
-
-   while (1)
-   {
+   uint32_t startTime = systickGetMillisecondsActive();
+   while (startTime + 100 > systickGetMillisecondsActive())
       bno055ReadEuler(rpy);
-      blinkLEDS();
-   }
 }
 
 void testGPS()
@@ -113,6 +115,26 @@ void testGPS()
    while (1)
    {
       mtk3339ParseNMEA();
+   }
+}
+
+// Option numero 1
+void backgroundTest()
+{
+   int ndx = 0;
+
+   uint8_t imuBuffer[17];
+   memset(imuBuffer, 0xF0, 17);
+   uint32_t startTime = systickGetMillisecondsActive();
+
+   while (startTime + 1000 > systickGetMillisecondsActive())
+   {
+      for (ndx = 0; ndx < 10; ndx++)
+      {
+         bno055PackageData(imuBuffer+1);
+         ulogBufferData(imuBuffer, 17);
+         systickDelay(8);
+      }
    }
 }
 
@@ -126,43 +148,21 @@ int main(void)
 {
    // Configure cpu and peripherals
    systemInit();
-   systickDelay(100);
+   systickDelay(CFG_SYSTICK_100MS_DELAY);
 
-   // int address = 0, ndx = 27, i;
-   // uint8_t buf[256];
-   //
-   // while (ndx-- > 0)
-   // {
-   //    w25qReadPage(buf, address);
-   //    for (i = 0; i < BLOCKSIZE; i++)
-   //       printf("%X ", buf[i]);
-   //    address += 256;
-   //    printf("%s%s", CFG_PRINTF_NEWLINE, CFG_PRINTF_NEWLINE);
-   // }
-
-   uint8_t data[13];
-   memset(data, 0xC1, 13);
+   // testIMU();
 
    w25qEraseBlock(0);
-
+   systickDelay(CFG_SYSTICK_100MS_DELAY);
    ulogInit();
-   systickDelay(100);
+   systickDelay(CFG_SYSTICK_100MS_DELAY);
+
    ulogNewFile();
-
-   while (systickGetSecondsActive() < 17)
-   {
-      bno055PackageData(data+1);
-      ulogBufferData(data, 13);
-      systickDelay(1);
-   }
-
+   backgroundTest();
    ulogFlushData();
-   ulogPrintFileSystem();
-
-   ulogListFiles();
-
    ulogNewFile();
-   ulogListFiles();
+   // ulogNewFile();
+   ulogPrintFileSystem();
 
    //testIMU();
    //testFlash();

@@ -74,9 +74,9 @@ cmd_t cmd_tbl[] =
   { "V",    0,  0,  0, cmd_sysinfo           , "System Info"                    , CMD_NOPARAMS },
   { "R",    0,  0,  0, cmd_reset             , "Reset"                          , CMD_NOPARAMS },
   { "z",    0,  0,  0,  cmd_deepsleep        , "Deep sleep for ~10 seconds"     , CMD_NOPARAMS },
-#ifdef CFG_ULOGFS
-  { "log",    1,  1,  0,  cmd_ulog           , "Log functions"                  , "start, stop, list, print" },
-#endif
+// #ifdef CFG_ULOGFS
+//   // { "log",    1,  1,  0,  cmd_ulog           , "Log functions"                  , "start, stop, list, print" },
+// #endif
 };
 
 #endif

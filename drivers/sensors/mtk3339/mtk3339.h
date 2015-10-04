@@ -57,7 +57,9 @@ extern volatile char nmeaBuffer[NMEA_BUFFER_LEN];
 extern volatile bool nmeaBufferRdy;
 
 struct gps_t {
+   bool available;
    float time;
+   int date;
    float lat;
    float lon;
    float alt;

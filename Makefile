@@ -89,7 +89,8 @@ PORT = /dev/ttyUSB0
 BAUD = 115200
 KFREQ = 1200
 ISP = -control -controlswap
-TERM = -termonly
+TERM = -termonly -logfile
+BAUDTERM = 9600
 
 ##########################################################################
 # GNU GCC compiler flags
@@ -122,8 +123,8 @@ ifeq (TRUE,$(DEBUGBUILD))
   CFLAGS  = -c -g -O0 $(INCLUDE_PATHS) -Wall -Werror -mthumb -ffunction-sections -fdata-sections -fmessage-length=0 -mcpu=$(CPU_TYPE) -DTARGET=$(TARGET) -fno-builtin $(OPTDEFINES)
   ASFLAGS = -c -g -O0 $(INCLUDE_PATHS) -Wall -Werror -mthumb -ffunction-sections -fdata-sections -fmessage-length=0 -mcpu=$(CPU_TYPE) -D__ASSEMBLY__ -x assembler-with-cpp
 else
-  CFLAGS  = -c -g -Os $(INCLUDE_PATHS) -Wall -Werror -mthumb -ffunction-sections -fdata-sections -fmessage-length=0 -mcpu=$(CPU_TYPE) -DTARGET=$(TARGET) -fno-builtin $(OPTDEFINES)
-  ASFLAGS = -c -g -Os $(INCLUDE_PATHS) -Wall -Werror -mthumb -ffunction-sections -fdata-sections -fmessage-length=0 -mcpu=$(CPU_TYPE) -D__ASSEMBLY__ -x assembler-with-cpp
+  CFLAGS  = -c -g -O0 $(INCLUDE_PATHS) -Wall -Werror -mthumb -ffunction-sections -fdata-sections -fmessage-length=0 -mcpu=$(CPU_TYPE) -DTARGET=$(TARGET) -fno-builtin $(OPTDEFINES)
+  ASFLAGS = -c -g -O0 $(INCLUDE_PATHS) -Wall -Werror -mthumb -ffunction-sections -fdata-sections -fmessage-length=0 -mcpu=$(CPU_TYPE) -D__ASSEMBLY__ -x assembler-with-cpp
 endif
 LDFLAGS = -nostartfiles -mcpu=$(CPU_TYPE) -mthumb -Wl,--gc-sections
 LDLIBS  = -lm
@@ -162,6 +163,6 @@ program: clean firmware
 	$(UPLOAD) $(ISP) build/$(OUTFILE).hex $(PORT) $(BAUD) $(KFREQ)
 
 serial:
-	$(UPLOAD) $(ISP) $(TERM) build/$(OUTFILE).hex $(PORT) 9600 $(KFREQ)
+	$(UPLOAD) $(ISP) $(TERM) build/$(OUTFILE).hex $(PORT) $(BAUDTERM) $(KFREQ)
 
 test: program serial

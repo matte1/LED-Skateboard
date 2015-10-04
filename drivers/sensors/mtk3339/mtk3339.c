@@ -14,7 +14,7 @@ static struct gps_t GPS;
       Pointer to start of nmea string message
 */
 /**************************************************************************/
-static bool _mtk3339ParseRMC(char *nmea)
+static bool _mtk3339ParseRMC(char *p)
 {
    // UTC Time
 	p = strchr(p, ',')+1;
@@ -25,7 +25,10 @@ static bool _mtk3339ParseRMC(char *nmea)
 	p = strchr(p, ',')+1;
 	if (',' != *p)
 		if (p[0] != 'A')
+		{
+			GPS.available = false;
          return false;
+		}
 
 	// Latitude
 	p = strchr(p, ',')+1;
@@ -59,6 +62,11 @@ static bool _mtk3339ParseRMC(char *nmea)
 	if (',' != *p)
       GPS.heading = atof(p);
 
+	// TODO: Test and ATOI()
+	p = strchr(p, ',')+1;
+	if (',' != *p)
+		GPS.date = (int)atof(p);
+
    #ifdef CFG_MTK3339_DEBUG
    printf("RMC - Time %d, Latitude %d, Longitude %d, Velocity %d, Heading %d%s",
       (int)GPS.time, (int)GPS.lat, (int)GPS.lon, (int)GPS.velocity,
@@ -77,7 +85,7 @@ static bool _mtk3339ParseRMC(char *nmea)
       Pointer to start of nmea string message
 */
 /**************************************************************************/
-static bool _mtk3339ParseGGA(char *nmea)
+static bool _mtk3339ParseGGA(char *p)
 {
    // UTC Time
 	p = strchr(p, ',')+1;
@@ -154,20 +162,25 @@ void mtk3339Init()
 
 /**************************************************************************/
 /*!
-   @brief Repacks gps struct into an array of bytes
+   @brief Repacks gps struct into an array of bytes.
 
    @param[in] buffer
-      Serializes 6 floats into 24 byte buffer
+      Serializes 6 floats into 28 byte buffer
 */
 /**************************************************************************/
 void mtk3339PackageData(uint8_t buffer[])
 {
+	uint32_t ticks = systickGetTicks();
    memcpy(&buffer[0],  &GPS.time, 		sizeof(float));
    memcpy(&buffer[4],  &GPS.lat, 		sizeof(float));
    memcpy(&buffer[8],  &GPS.lon, 		sizeof(float));
    memcpy(&buffer[12], &GPS.alt, 		sizeof(float));
    memcpy(&buffer[16], &GPS.velocity, 	sizeof(float));
    memcpy(&buffer[20], &GPS.heading, 	sizeof(float));
+   buffer[27] = (ticks >> 24) & 0xFF;
+   buffer[26] = (ticks >> 16) & 0xFF;
+   buffer[25] = (ticks >> 8)  & 0xFF;
+   buffer[24] =  ticks & 0xFF;
 }
 
 /**************************************************************************/
@@ -178,6 +191,7 @@ void mtk3339PackageData(uint8_t buffer[])
    1. TODO: Examine whether or not the way uart indicates to this driver
    that there is data to be parsed is really the best way to be doing things.
    Right now it just says theres data if its seen a '*'.
+	2. TODO: General Reworking
 
    @return bool
       True if we actually parsed a nmea sentence.
@@ -195,7 +209,7 @@ bool mtk3339ParseNMEA()
       p++;
       if(!strncmp(p, GPRMC, 5))
          _mtk3339ParseRMC(p);
-      else if(!strncmp(p, GPGGA, 5))
+      else if(GPS.available && !strncmp(p, GPGGA, 5))
          _mtk3339ParseGGA(p);
    }
 
