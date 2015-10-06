@@ -159,6 +159,26 @@ bool bno055Init()
 
 /**************************************************************************/
 /*!
+   @brief  Read raw linear acceleration and euler angles from IMU
+   Requires 16 bytes. Little Endian order
+
+   @param[in] buf
+              Buffer to read 16 bytes of raw data into.
+*/
+/**************************************************************************/
+void bno055PackageData(uint8_t buf[])
+{
+   uint32_t ticks = systickGetTicks();
+   bno055ReadLength(BNO055_LACC_X_L, buf, 6);
+   bno055ReadLength(BNO055_EUL_HEADING_L, &buf[6], 6);
+   buf[15] = (ticks >> 24) & 0xFF;
+   buf[14] = (ticks >> 16) & 0xFF;
+   buf[13] = (ticks >> 8)  & 0xFF;
+   buf[12] =  ticks & 0xFF;
+}
+
+/**************************************************************************/
+/*!
    @brief  Read Euler angles from device
 
    @param[in] rpy
@@ -245,19 +265,4 @@ void bno055ReadLinAccel(double laccel[])
       printf("X: %d, Y: %d, Z: %d\n\r",
          (int)laccel[0], (int)laccel[1], (int)laccel[2]);
    #endif
-}
-
-/**************************************************************************/
-/*!
-   @brief  Read raw linear acceleration and euler angles from IMU
-   Requires 12 bytes
-
-   @param[in] buf
-              Buffer to read 12 bytes of raw data into.
-*/
-/**************************************************************************/
-void bno055PackageData(uint8_t buf[])
-{
-   bno055ReadLength(BNO055_LACC_X_L, buf, 6);
-   bno055ReadLength(BNO055_EUL_HEADING_L, buf+6, 6);
 }
