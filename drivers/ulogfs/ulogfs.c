@@ -16,24 +16,83 @@
 
 static ULOGFS uLogFS;
 
+
+/**************************************************************************/
+/*!
+	@brief Checks a page of data to see if its empty or has data in it.
+
+	@return bool
+         True if page is empty
+*/
+/**************************************************************************/
+static bool _ulogCheckPage(uint8_t buf[])
+{
+   int ndx;
+
+   for (ndx = 0; ndx < 256; ndx++)
+      if (buf[ndx] != 0xFF)
+         break;
+
+   return ndx == 256;
+}
+
 /**************************************************************************/
 /*!
 	@brief This assumes a that the next free block is unkown and scans from
    beginning of memory trying to find the next free sector.
 
    NOTE: This is defenitely broken... If we unluckily get a sector that has
-   data in put starts with 0xFF then were SOL.
+   data in but starts with 0xFF then were SOL.
+
+   1. Traverse to last inode
+   2. Iterate through sectors until next free one
 
 	@return address
          The address of the next avaliable block
 */
 /**************************************************************************/
-static uint32_t _ulogNextFreeBlock()
+static uint32_t _ulogNextFreeSector()
 {
+   // int ndx = 0;
    uint32_t address = 0;
+   uint8_t buf[BLOCKSIZE];
 
-   while (w25qReadByte(address, 0) != 0xFF && address < CFG_W25QXX_MAX_ADDRESS)
+   // The second conditional is actually unnecassary
+   while (address < CFG_W25QXX_MAX_ADDRESS && address != 0xFFFFFFFF)
+   {
+      // Get pointer to the next Inode
+      w25qReadPage(buf, address);
+      uLogFS.lastInode = address;
+      address = (buf[5] << 24) |
+                (buf[6] << 16) |
+                (buf[7] << 8)  |
+                 buf[8];
+   }
+
+   printf("New Sector Address found: %u\n\r", (unsigned int)uLogFS.lastInode);
+
+   address = uLogFS.lastInode;
+   while (address < CFG_W25QXX_MAX_ADDRESS)
+   {
+      w25qReadPage(buf, address);
+
+      if (_ulogCheckPage(buf))
+         return address;
+
+      // for (ndx = 0; ndx < 256; ndx++)
+      // {
+      //    if (buf[ndx] != 0xFF)
+      //       break;
+      // }
+      //
+      // if (ndx == 256)
+      // {
+      //    printf("Found free sector\n");
+      //    return address;
+      // }
+
       address += SECTORSIZE;
+   }
 
    return address;
 }
@@ -42,7 +101,7 @@ static uint32_t _ulogNextFreeBlock()
 /**************************************************************************/
 /*!
 	@brief This will be called during system init in order to perpare for
-   logging data. It will set a few variable such as nextBlock and numBlocks
+   logging data. It will set a few variable such as curBlock and numBlocks
 
    TODO: 1) Find where the last Inode is at.
          2) Add return codes for error handling. This could just return true
@@ -53,12 +112,12 @@ static uint32_t _ulogNextFreeBlock()
 /**************************************************************************/
 uint8_t ulogInit()
 {
-	uLogFS.nextBlock = _ulogNextFreeBlock();
-   uLogFS.bufferIndex = 0;
    uLogFS.lastInode = 0;
+   uLogFS.bufferIndex = 0;
+	uLogFS.curBlock = _ulogNextFreeSector();
 
    #ifdef CFG_ULOGFS_DEBUG
-      printf("Init Block: %u%s", (unsigned int)uLogFS.nextBlock,
+      printf("Init Block: %u%s", (unsigned int)uLogFS.curBlock,
          CFG_PRINTF_NEWLINE);
    #endif
 
@@ -93,10 +152,10 @@ void ulogBufferData(uint8_t *data, int length)
    else
    {
       memcpy(&uLogFS.buffer[uLogFS.bufferIndex], data, spaceLeft);
-	   w25qWritePage(uLogFS.buffer, uLogFS.nextBlock, BLOCKSIZE);
+	   w25qWritePage(uLogFS.buffer, uLogFS.curBlock, BLOCKSIZE);
       memcpy(uLogFS.buffer, &data[spaceLeft], length - spaceLeft);
       uLogFS.bufferIndex = length - spaceLeft;
-	   uLogFS.nextBlock += BLOCKSIZE;
+	   uLogFS.curBlock += BLOCKSIZE;
    }
 }
 
@@ -110,8 +169,8 @@ void ulogFlushData()
 {
    if (uLogFS.bufferIndex > 0)
    {
-   	w25qWritePage(uLogFS.buffer, uLogFS.nextBlock, uLogFS.bufferIndex);
-      uLogFS.nextBlock += BLOCKSIZE;
+   	w25qWritePage(uLogFS.buffer, uLogFS.curBlock, uLogFS.bufferIndex);
+      uLogFS.curBlock += BLOCKSIZE;
       uLogFS.bufferIndex = 0;
    }
 }
@@ -139,15 +198,19 @@ void ulogNewFile()
    buf[4] =  systime & 0xFF;
 
    // Make sure we are sector aligned
-   if (uLogFS.nextBlock % SECTORSIZE != 0)
-      uLogFS.nextBlock = ((int)(uLogFS.nextBlock / SECTORSIZE) + 1) * SECTORSIZE;
+   if (uLogFS.curBlock % SECTORSIZE != 0)
+      uLogFS.curBlock = ((int)(uLogFS.curBlock / SECTORSIZE) + 1) * SECTORSIZE;
 
-   w25qWritePage(buf, uLogFS.nextBlock, 5);
+   w25qWritePage(buf, uLogFS.curBlock, 5);
 
-	buf[5] = (uLogFS.nextBlock >> 24) & 0xFF;
-   buf[6] = (uLogFS.nextBlock >> 16) & 0xFF;
-   buf[7] = (uLogFS.nextBlock >> 8) & 0xFF;
-   buf[8] =  uLogFS.nextBlock & 0xFF;
+   #ifdef CFG_ULOGFS_DEBUG
+      printf("Created new file at: %u\n\r", (unsigned int)uLogFS.curBlock);
+   #endif
+
+	buf[5] = (uLogFS.curBlock >> 24) & 0xFF;
+   buf[6] = (uLogFS.curBlock >> 16) & 0xFF;
+   buf[7] = (uLogFS.curBlock >> 8) & 0xFF;
+   buf[8] =  uLogFS.curBlock & 0xFF;
 
    // TODO: Add GPS Time, Date if possible
    // if (gps_available)
@@ -163,13 +226,12 @@ void ulogNewFile()
    // }
 
    // Write this inodes address back to the lastInode's pointer to this file
-   if (uLogFS.nextBlock != 0)
-      w25qWritePage(buf, uLogFS.lastInode, ULOG_INODE_LEN);
-
+   if (uLogFS.curBlock != 0)
+      w25qWritePage(buf, uLogFS.lastInode, 9);
    // Update where the last Inode was
-   uLogFS.lastInode = uLogFS.nextBlock;
-   // Update nextBlock
-   uLogFS.nextBlock += BLOCKSIZE;
+   uLogFS.lastInode = uLogFS.curBlock;
+   // Update curBlock
+   uLogFS.curBlock += BLOCKSIZE;
 }
 
 
@@ -216,27 +278,30 @@ void ulogListFiles()
 /**************************************************************************/
 /*!
    @brief Prints out all blocks of data starting at the fist byte.
-
-   TODO: Test this by writing chars out to file. This will create a more compact
-   binary file thats easier to manipulate.
-
-   TODO: Fix issue where a good page that unluckily starts with 0xFF stops
-   progress.
 */
 /**************************************************************************/
 void ulogPrintFileSystem()
 {
-   int ndx;
-   uint32_t address = 0;
-	uint8_t buf[BLOCKSIZE];
+   // int ndx = 0;
+   uint32_t address = 0, temp;
+   uint8_t buf[BLOCKSIZE];
 
-   w25qReadPage(buf, address);
-
-   for (ndx = 0; ndx < 5; ndx++)
+   // The second conditional is actually unnecassary
+   while (address < CFG_W25QXX_MAX_ADDRESS && address != 0xFFFFFFFF)
    {
-      uartSend(buf, BLOCKSIZE);
-
-      address += BLOCKSIZE;
+      // Get pointer to the next Inode
       w25qReadPage(buf, address);
+      temp = address;
+      address = (buf[5] << 24) |
+                (buf[6] << 16) |
+                (buf[7] << 8)  |
+                 buf[8];
+
+      while (temp < address && !_ulogCheckPage(buf))
+      {
+         uartSend(buf, BLOCKSIZE);
+         temp += BLOCKSIZE;
+         w25qReadPage(buf, temp);
+      }
    }
 }

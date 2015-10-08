@@ -26,7 +26,7 @@
 #define BLOCK_TYPE_INODE	0x01
 
 typedef struct {
-	uint32_t nextBlock;
+	uint32_t curBlock;
 	uint32_t lastInode;
 	uint16_t  bufferIndex;
 	uint8_t  buffer[BLOCKSIZE];
