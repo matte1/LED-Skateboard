@@ -3,60 +3,64 @@
 import Packet
 import threading, struct, time, os
 
-logTestFile = "~/projects/ARM/lpc1114/ProSense/lpc21isp.log"
+logTestFile = "/home/matt/projects/ARM/lpc1114/ProSense/lpc21isp.log"
+
+def parseLog(logfile):
+    with open(logfile, 'rb') as log:
+        while parseInode(log):
+            print("Success")
 
 ''' Parse an Inode and start a thread to parse Data'''
-def parseInode(logfile, address):
-    with open(logfile, 'rb') as log:
-        # Move to next address and read a page
-        log.seek(address)
+def parseInode(log):
+    try:
+        result = False
+        address = ((0xFFFFFFFF),)
         page = bytearray(log.read(256))
 
         # If we have an Inode then create file and parse data
         if page[0] == 0x01:
-            ticks = struct.unpack('<I', page[1:5])
-            utc = struct.unpack('<I', page[9:13])
-            parseData(logfile, "test"+str(ticks[0])+".out", log.tell())
-            # Make file from date and time
-            # newThread = threading.Thread(target=parseData(logfile, fi.tell()))
-            # newThread.start()
-        else:
-            raise Exception("No Inode Found at %d" % address)
+            ticks    = struct.unpack('>I', page[1:5])
+            address  = struct.unpack('>I', page[13:17])
+            size     = struct.unpack('>I', page[17:21])
+            parseData(log, size[0], "test"+str(ticks[0])+".out")
+        elif page[0] != 0x01:
+            print("Bad Page ID")
 
-        # Check if there is another Inode
-        address = struct.unpack('>I', page[5:9])
-        print(hex(address[0]))
-        # if address[0] != 0xFFFFFFFF:
-        #     print(address)
-        #     parseInode(logfile, address[0])
+    except Exception as ex:
+        print("Inode Error: %s" % str(ex))
 
-def parseData(logfile, outfile, address):
+    return address[0] != 0xFFFFFFFF
+
+def parseData(log, size, outfile):
     IMU = Packet.BNO055()
     GPS = Packet.MTK3339()
 
-    with open(logfile, 'rb') as log, open(outfile, 'w') as out:
+    with open(outfile, 'w') as out:
         try:
-            log.seek(address)
-
-            while True:
+            while size > 0:
                 packetID = bytearray(log.read(1))
+                size -= 1
                 if packetID[0] == 0xF0:
-                    csv = IMU.parse(bytes(log.read(16)))
-                    print(csv)
+                    csv = IMU.parse(bytes(log.read(IMU.Length)))
                     out.write(csv)
+                    size -= IMU.Length
                 elif packetID[0] == 0xF1:
                     raise("Why the fuck is there a GPS Packet")
                 else:
                     raise Exception("Invalid Packet ID (%s) at address %d" \
                          % (hex(packetID[0]), log.tell()))
 
+            # Read out till next page
+            data = bytes(log.read(1))
+            while data[0] == 0xFF:
+                data = bytes(log.read(1))
+                if len(data) == 0:
+                    print("Finished")
+                    exit(1)
+            log.seek(-1, 1)
+
         except Exception as ex:
             print("Data Error: %s" % str(ex))
-
-
-def run(logfile):
-    parseInode(logfile, 0)
-    parseData(logfile, 256)
 
 def createDir():
     os.chdir("Matts-ProSense")
@@ -66,7 +70,7 @@ def createDir():
     os.chdir(newdir)
 
 if __name__ == '__main__':
-    # parseInode(logTestFile, 0)
+    parseLog(logTestFile)
     # parseData("../../lpc21isp.log", 256)
     # with open("../../lpc21isp.log", 'rb') as log:
     #     buf = bytes(log.read(12))

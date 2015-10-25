@@ -13,7 +13,7 @@ class Packet(object):
     def toCSV(self):
         csv = ""
         for value in self.values:
-            csv += str(value)+','
+            csv += "{:10.4f}".format(value) + ',' 
         csv = csv[:-1]+"\n"
 
         del self.values[:]
@@ -27,6 +27,7 @@ class Packet(object):
 class BNO055(Packet):
     pkt_fmt = '<hhhhhhI'
     pkt_size = struct.calcsize(pkt_fmt)
+    Length = 16
 
     def __init__(self):
         Packet.__init__(self)
