@@ -189,12 +189,7 @@ uint32_t systickGetRollovers(void)
 /**************************************************************************/
 uint32_t systickGetMillisecondsActive(void)
 {
-  uint32_t currentTick = systickTicks;
-  uint32_t rollovers = systickRollovers;
-  uint32_t msActive = currentTick / CFG_SYSTICK_DELAY_IN_MS;
-  msActive += rollovers * (0xFFFFFFFF / CFG_SYSTICK_DELAY_IN_MS);
-
-  return msActive;
+  return systickTicks * CFG_SYSTICK_DELAY_IN_MS;
 }
 
 /**************************************************************************/

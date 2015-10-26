@@ -28,7 +28,7 @@
 typedef struct {
 	uint32_t curBlock;
 	uint32_t lastInode;
-	uint16_t  bufferIndex;
+	uint16_t bufferIndex;
 	uint8_t  buffer[BLOCKSIZE];
 } ULOGFS;
 
@@ -36,8 +36,8 @@ typedef struct {
 uint8_t ulogInit();
 void ulogDeleteFile();
 void ulogNewFile();
+void ulogCloseFile();
 void ulogBufferData(uint8_t *data, int length);
-void ulogFlushData();
 
 /* Higher level APIs */
 void ulogListFiles();
