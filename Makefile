@@ -14,7 +14,7 @@ SRAM = 4K
 SRAM_USB = 0
 
 VPATH =
-OBJS = main.o
+# OBJS = main.o
 
 ##########################################################################
 # Debug settings
@@ -27,7 +27,7 @@ DEBUGBUILD = FALSE
 ##########################################################################
 # IDE Flags (Keeps various IDEs happy)
 ##########################################################################
-OPTDEFINES = -D __NEWLIB__
+#OPTDEFINES = -D __NEWLIB__
 
 ##########################################################################
 # Project-specific files
@@ -70,6 +70,26 @@ OBJS += timer32.o uart.o uart_buf.o stdio.o string.o wdt.o sysinit.o
 OBJS += iap.o cmd.o
 
 ##########################################################################
+# Test Framework
+##########################################################################
+VPATH += tests/embUnit
+
+LIB_OBJS += AssertImpl.o RepeatedTest.o stdImpl.o TestCaller.o TestCase.o
+LIB_OBJS += TestResult.o TestRunner.o TestSuite.o
+
+VPATH += tests/textui
+
+LIB_OBJS += TextOutputter.o TextUIRunner.o
+
+##########################################################################
+# Tests
+##########################################################################
+VPATH += tests/UnitTests
+
+OBJS += BNO055Tests.o
+OBJS += AllTests.o
+
+##########################################################################
 # GNU GCC compiler prefix and location
 ##########################################################################
 CROSS_COMPILE = arm-none-eabi-
@@ -96,12 +116,19 @@ BAUDTERM = 9600
 # GNU GCC compiler flags
 ##########################################################################
 ROOT_PATH = .
-INCLUDE_PATHS = -I$(ROOT_PATH) -I$(ROOT_PATH)/project
+INCLUDE_PATHS = -I$(ROOT_PATH) -Itests/
+
+##########################################################################
+# Test Archive
+##########################################################################
+AR = $(CROSS_COMPILE)ar
+ARFLAGS = -ru -v
+TESTLIB = tests/lib
+
 
 ##########################################################################
 # Startup files
 ##########################################################################
-
 LD_PATH = lpc1xxx
 LD_SCRIPT = $(LD_PATH)/linkscript.ld
 LD_TEMP = $(LD_PATH)/memory.ld
@@ -138,14 +165,18 @@ all: firmware
 %.o : %.s
 	$(AS) $(ASFLAGS) -o $@ $<
 
-firmware: $(OBJS) $(SYS_OBJS)
+libembUnit.a: $(LIB_OBJS)
+	$(AR) $(ARFLAGS) $@ $(LIB_OBJS)
+	@mv libembUnit.a tests/lib
+
+firmware: $(OBJS)
 	-@echo "MEMORY" > $(LD_TEMP)
 	-@echo "{" >> $(LD_TEMP)
 	-@echo "  flash(rx): ORIGIN = 0x00000000, LENGTH = $(FLASH)" >> $(LD_TEMP)
 	-@echo "  sram(rwx): ORIGIN = 0x10000000+$(SRAM_USB), LENGTH = $(SRAM)-$(SRAM_USB)" >> $(LD_TEMP)
 	-@echo "}" >> $(LD_TEMP)
 	-@echo "INCLUDE $(LD_SCRIPT)" >> $(LD_TEMP)
-	$(LD) $(LDFLAGS) -T $(LD_TEMP) -o $(OUTFILE).elf $(OBJS) $(LDLIBS)
+	$(LD) $(LDFLAGS) -T $(LD_TEMP) -o $(OUTFILE).elf $(OBJS) $(LDLIBS) $(TESTLIB)/libembUnit.a
 	-@echo ""
 	$(SIZE) $(OUTFILE).elf
 	-@echo ""
