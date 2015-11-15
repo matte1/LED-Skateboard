@@ -41,101 +41,63 @@
 
 #include "core/cmd/cmd.h"
 
-#include "drivers/sensors/mtk3339/mtk3339.h"
 #include "drivers/sensors/bno055/bno055.h"
-#include "drivers/sensors/bmp180/bmp180.h"
 #include "drivers/flash/w25qxx/w25qxx.h"
 #include "drivers/ulogfs/ulogfs.h"
-
-void serializeFloat(float data[], uint8_t buf[], uint8_t lenght)
-{
-   while(lenght--)
-   {
-      memcpy(buf, data++, sizeof(float));
-      buf += sizeof(float);
-   }
-}
-
-// Simple function for blinking an LED
-void blinkLEDS()
-{
-   static uint32_t lastSecond = 0;
-   uint32_t currentSecond = 0;
-
-   // Toggle LED once per second
-   currentSecond = systickGetSecondsActive();
-   if (currentSecond != lastSecond)
-   {
-      lastSecond = currentSecond;
-      gpioSetValue(CFG_LED_PORT, CFG_LED_PIN, lastSecond % 2);
-   }
-}
-
-void testFlash()
-{
-   w25qEraseSector(0);
-
-   int ndx;
-   uint8_t buffer[256];
-
-   for (ndx = 0; ndx < 256; ndx++)
-   {
-      buffer[ndx] = ndx;
-      printf("%d ", buffer[ndx]);
-   }
-
-   printf("\r\n\r\n");
-
-   uint32_t time1 = systickGetMillisecondsActive();
-   w25qWritePage(buffer, 0, 256);
-   uint32_t time2 = systickGetMillisecondsActive();
-
-   printf("Delta Time: %u\r\n\n", (unsigned int)(time2 - time1));
-
-   memset(buffer, 0x00, 256);
-   w25qReadPage(buffer, 0);
-
-   for (ndx = 0; ndx < 256; ndx++)
-   {
-      buffer[ndx] = ndx;
-      printf("%d ", buffer[ndx]);
-   }
-}
 
 void testIMU()
 {
    double rpy[3];
-   uint32_t startTime = systickGetMillisecondsActive();
-   while (startTime + 100 > systickGetMillisecondsActive())
-      bno055ReadEuler(rpy);
-}
-
-void testGPS()
-{
-   while (1)
-   {
-      mtk3339ParseNMEA();
-   }
+   while (1) bno055ReadEuler(rpy);
 }
 
 // Option numero 1
-void backgroundTest()
+void backgroundTest(uint32_t runtime)
 {
    int ndx = 0;
 
    uint8_t imuBuffer[17];
    memset(imuBuffer, 0xF0, 17);
-   uint32_t startTime = systickGetMillisecondsActive();
 
-   while (startTime + 1000 > systickGetMillisecondsActive())
+   for (ndx = 0; ndx < runtime; ndx++)
    {
-      for (ndx = 0; ndx < 10; ndx++)
-      {
-         bno055PackageData(imuBuffer+1);
-         ulogBufferData(imuBuffer, 17);
-         systickDelay(8);
-      }
+      bno055PackageData(&imuBuffer[1]);
+      ulogBufferData(imuBuffer, 17);
+      systickDelay(1);
    }
+}
+
+void testUlogfs()
+{
+   int ndx;
+   uint8_t buffer[256];
+   w25qEraseBlock(0);
+   ulogInit();
+
+   // 5120 Bytes
+   ulogNewFile();
+   memset(buffer, 'A', 123);
+   for (ndx = 0; ndx < 40; ndx++)
+      ulogBufferData(buffer, 123);
+   ulogCloseFile();
+
+   ulogInit();
+   // 5120 Bytes
+   ulogNewFile();
+   memset(buffer, 'B', 256);
+   for (ndx = 0; ndx < 20; ndx++)
+      ulogBufferData(buffer, 256);
+   ulogCloseFile();
+
+   // 1792 bytes
+   ulogNewFile();
+   memset(buffer, 'C', 17);
+   for (ndx = 0; ndx < 100; ndx++)
+      ulogBufferData(buffer, 17);
+   ulogCloseFile();
+
+   ulogListFiles();
+   ulogPrintFileSystem();
 }
 
 /**************************************************************************/
@@ -150,21 +112,34 @@ int main(void)
    systemInit();
    systickDelay(CFG_SYSTICK_100MS_DELAY);
 
-   // testIMU();
+   printf("HI Matt\n");
 
-   w25qEraseBlock(0);
-   systickDelay(CFG_SYSTICK_100MS_DELAY);
-   ulogInit();
-   systickDelay(CFG_SYSTICK_100MS_DELAY);
+   // testUlogfs();
 
-   ulogNewFile();
-   backgroundTest();
-   ulogFlushData();
-   ulogNewFile();
+   // while (1) {
+   //    ledBlink();
+   // }
+
+   // w25qEraseBlock(0);
+
+   testIMU();
+
+   // ulogInit();
    // ulogNewFile();
-   ulogPrintFileSystem();
+   // backgroundTest(500);
+   // ulogCloseFile();
 
-   //testIMU();
+   // ulogNewFile();
+   // backgroundTest(100);
+   // ulogCloseFile();
+   //
+   // ulogNewFile();
+   // backgroundTest(10);
+   // ulogCloseFile();
+
+   // ulogPrintFileSystem();
+
+   // testIMU();
    //testFlash();
    //testGPS();
 

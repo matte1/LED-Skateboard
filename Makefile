@@ -14,7 +14,7 @@ SRAM = 4K
 SRAM_USB = 0
 
 VPATH =
-# OBJS = main.o
+OBJS = main.o
 
 ##########################################################################
 # Debug settings
@@ -71,7 +71,7 @@ OBJS += iap.o cmd.o
 
 ##########################################################################
 # Test Framework
-##########################################################################
+#########################################################################
 VPATH += tests/embUnit
 
 LIB_OBJS += AssertImpl.o RepeatedTest.o stdImpl.o TestCaller.o TestCase.o
@@ -87,12 +87,12 @@ LIB_OBJS += TextOutputter.o TextUIRunner.o
 VPATH += tests/UnitTests
 
 OBJS += BNO055Tests.o W25QXXTests.o LEDTests.o MTK3339Tests.o ULOGFSTests.o
-OBJS += AllTests.o
+# OBJS += AllTests.o
 
 ##########################################################################
 # GNU GCC compiler prefix and location
 ##########################################################################
-CROSS_COMPILE = arm-none-eabi-
+CROSS_COMPILE = /opt/gcc-arm-none-eabi-4_7-2014q2/bin/arm-none-eabi-
 AS = $(CROSS_COMPILE)gcc
 CC = $(CROSS_COMPILE)gcc
 LD = $(CROSS_COMPILE)gcc
