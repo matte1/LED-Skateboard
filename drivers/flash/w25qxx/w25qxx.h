@@ -27,6 +27,7 @@
 #define W25Q_PWR_DOWN     0xB9
 #define W25Q_PWR_UP       0xAB
 #define W25Q_RD_ID        0x90
+#define W25Q_DEVICE_ID    0xEF
 
 uint8_t w25qReadDeviceID();
 void w25qInit();
