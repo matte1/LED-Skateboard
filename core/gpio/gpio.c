@@ -42,11 +42,6 @@
 
 #include "gpio.h"
 
-#ifdef CFG_CHIBI
-#include "drivers/rf/chibi/chb_drvr.h"
-volatile uint32_t chibi_counter  = 0;
-#endif
-
 static bool _gpioInitialised = false;
 
 /**************************************************************************/
@@ -148,10 +143,17 @@ void PIOINT3_IRQHandler(void)
 void gpioDisableInternalResistors(void)
 {
   // Array of all IOCON addresses for GPIO pins
-  uint32_t iocon_addresses[39] = {  0x4004400C, 0x40044010, 0x4004401C, 0x4004402C, 0x4004404C, 0x40044050, 0x40044060, 0x40044064, 0x40044068, 0x40044074,                         // GPIO0
-                                    0x40044078, 0x4004407C, 0x40044080, 0x40044094, 0x400440A0, 0x400440A4, 0x400440A8, 0x40044014, 0x40044038, 0x4004406C, 0x40044098,             // GPIO1
-                                    0x40044008, 0x40044028, 0x4004405C, 0x4004408C, 0x40044040, 0x40044044, 0x40044000, 0x40044020, 0x40044024, 0x40044054, 0x40044058, 0x40044070, // GPOP2
-                                    0x40044084, 0x40044088, 0x4004409C, 0x400440AC, 0x4004403C, 0x40044048 };                                                                       // GPOP3
+  uint32_t iocon_addresses[39] = {  0x4004400C, 0x40044010, 0x4004401C, 0x4004402C,
+                                    0x4004404C, 0x40044050, 0x40044060, 0x40044064,
+                                    0x40044068, 0x40044074,                         // GPIO0
+                                    0x40044078, 0x4004407C, 0x40044080, 0x40044094,
+                                    0x400440A0, 0x400440A4, 0x400440A8, 0x40044014,
+                                    0x40044038, 0x4004406C, 0x40044098,             // GPIO1
+                                    0x40044008, 0x40044028, 0x4004405C, 0x4004408C,
+                                    0x40044040, 0x40044044, 0x40044000, 0x40044020,
+                                    0x40044024, 0x40044054, 0x40044058, 0x40044070, // GPOP2
+                                    0x40044084, 0x40044088, 0x4004409C, 0x400440AC,
+                                    0x4004403C, 0x40044048 };                       // GPOP3
 
   uint32_t i;
   for (i = 0; i < 39; i++)
@@ -172,11 +174,15 @@ void gpioInit (void)
   /* Enable AHB clock to the GPIO domain. */
   SCB_SYSAHBCLKCTRL |= (SCB_SYSAHBCLKCTRL_GPIO);
 
+  // Change port function to GPIO
+  if (CFG_LED_PORT == 0 && CFG_LED_PIN == 10)
+    IOCON_PIO0_10 |= 1;
+
   /* Set up NVIC when I/O pins are configured as external interrupts. */
-  // NVIC_EnableIRQ(EINT0_IRQn);
-  // NVIC_EnableIRQ(EINT1_IRQn);
-  // NVIC_EnableIRQ(EINT2_IRQn);
-  // NVIC_EnableIRQ(EINT3_IRQn);
+  NVIC_EnableIRQ(EINT0_IRQn);
+  NVIC_EnableIRQ(EINT1_IRQn);
+  NVIC_EnableIRQ(EINT2_IRQn);
+  NVIC_EnableIRQ(EINT3_IRQn);
 
   /* Set initialisation flag */
   _gpioInitialised = true;

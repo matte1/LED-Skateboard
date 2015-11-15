@@ -42,6 +42,7 @@
 #include "sysinit.h"
 
 #include "core/cpu/cpu.h"
+#include "core/gpio/gpio.h"
 #include "core/pmu/pmu.h"
 #include "core/adc/adc.h"
 
@@ -87,7 +88,7 @@ void systemInit()
 
   #ifdef CFG_LED
     // Set LED pin as output and turn LED off
-    gpioSetDir(CFG_LED_PORT, CFG_LED_PIN, 1);
+    gpioSetDir(CFG_LED_PORT, CFG_LED_PIN, gpioDirection_Output);
     gpioSetValue(CFG_LED_PORT, CFG_LED_PIN, CFG_LED_ON);
   #endif
 
