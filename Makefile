@@ -86,7 +86,7 @@ LIB_OBJS += TextOutputter.o TextUIRunner.o
 ##########################################################################
 VPATH += tests/UnitTests
 
-OBJS += BNO055Tests.o
+OBJS += BNO055Tests.o W25QXXTests.o LEDTests.o MTK3339Tests.o ULOGFSTests.o
 OBJS += AllTests.o
 
 ##########################################################################
