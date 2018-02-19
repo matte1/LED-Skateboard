@@ -1,12 +1,12 @@
 /**************************************************************************/
-/*! 
+/*!
     @file     gpio.c
     @author   K. Townsend (microBuilder.eu)
     @date     22 March 2010
     @version  0.10
 
     @section DESCRIPTION
-	
+
     Controls the general purpose digital IO.
 
     @section LICENSE
@@ -45,7 +45,7 @@
 static bool _gpioInitialised = false;
 
 /**************************************************************************/
-/*! 
+/*!
     @brief IRQ Handler for GPIO port 0 (currently checks pin 0.1)
 */
 /**************************************************************************/
@@ -58,13 +58,13 @@ void PIOINT0_IRQHandler(void)
   if (regVal)
   {
     gpioIntClear(0, 1);
-  }		
+  }
   return;
 }
 #endif
 
 /**************************************************************************/
-/*! 
+/*!
     @brief IRQ Handler for GPIO port 1 (currently checks pin 1.1)
 */
 /**************************************************************************/
@@ -84,7 +84,7 @@ void PIOINT1_IRQHandler(void)
 #endif
 
 /**************************************************************************/
-/*! 
+/*!
     @brief IRQ Handler for GPIO port 2 (currently checks pin 2.1)
 */
 /**************************************************************************/
@@ -97,13 +97,13 @@ void PIOINT2_IRQHandler(void)
   if ( regVal )
   {
     gpioIntClear(2, 1);
-  }		
+  }
   return;
 }
 #endif
 
 /**************************************************************************/
-/*! 
+/*!
     @brief IRQ Handler for GPIO port 3 (currently checks pin 3.1)
 */
 /**************************************************************************/
@@ -120,13 +120,13 @@ void PIOINT3_IRQHandler(void)
     chibi_counter++;
     chb_ISR_Handler();
     gpioIntClear(3, 1);
-  }		
+  }
 #else
   regVal = gpioIntStatus(3, 1);
   if ( regVal )
   {
     gpioIntClear(3, 1);
-  }		
+  }
 #endif
 
  return;
@@ -134,7 +134,7 @@ void PIOINT3_IRQHandler(void)
 #endif
 
 /**************************************************************************/
-/*! 
+/*!
     @brief Disables all of the internal resistors by default, since they
            are set to pullup by default coming out of reset and can waste
            power if they aren't really needed.
@@ -164,7 +164,7 @@ void gpioDisableInternalResistors(void)
 }
 
 /**************************************************************************/
-/*! 
+/*!
     @brief Initialises GPIO and enables the GPIO interrupt
            handler for all GPIO ports.
 */
@@ -175,8 +175,13 @@ void gpioInit (void)
   SCB_SYSAHBCLKCTRL |= (SCB_SYSAHBCLKCTRL_GPIO);
 
   // Change port function to GPIO
-  if (CFG_LED_PORT == 0 && CFG_LED_PIN == 10)
-    IOCON_PIO0_10 |= 1;
+  // if (CFG_LED_PORT == 0 && CFG_LED_PIN == 10) {
+     IOCON_PIO0_10 |= 1;
+  // }
+
+  if (CFG_LED_PORT == 1 && CFG_LED_PIN == 6) {
+     IOCON_PIO1_6 &= ~0x1;
+ }
 
   /* Set up NVIC when I/O pins are configured as external interrupts. */
   NVIC_EnableIRQ(EINT0_IRQn);
@@ -191,7 +196,7 @@ void gpioInit (void)
 }
 
 /**************************************************************************/
-/*! 
+/*!
     @brief Sets the direction (input/output) for a specific port pin
 
     @param[in]  portNum
@@ -230,7 +235,7 @@ void gpioSetDir (uint32_t portNum, uint32_t bitPos, gpioDirection_t dir)
 }
 
 /**************************************************************************/
-/*! 
+/*!
     @brief Gets the value for a specific port pin
 
     @param[in]  portNum
@@ -269,7 +274,7 @@ uint32_t gpioGetValue (uint32_t portNum, uint32_t bitPos)
 }
 
 /**************************************************************************/
-/*! 
+/*!
     @brief Sets the value for a specific port pin (only relevant when a
            pin is configured as output).
 
@@ -291,7 +296,7 @@ inline void gpioSetValue (const uint32_t portNum, const uint32_t bitPos, const u
 }
 
 /**************************************************************************/
-/*! 
+/*!
     @brief Sets the interrupt sense, event, etc.
 
     @param[in]  portNum
@@ -335,7 +340,7 @@ void gpioSetInterrupt (uint32_t portNum, uint32_t bitPos, gpioInterruptSense_t s
   REG32 *gpiois  = &GPIO_GPIO0IS;   // Interrupt sense (edge or level sensitive)
   REG32 *gpioibe = &GPIO_GPIO0IBE;  // Interrupt both edges (0 = int controlled by GPIOIEV, 1 = both edges trigger interrupt)
   REG32 *gpioiev = &GPIO_GPIO0IEV;  // 0 = falling edge or low, 1 = rising edge or high (depending on GPIOIS)
-  
+
   switch (portNum)
   {
     case 0:
@@ -376,7 +381,7 @@ void gpioSetInterrupt (uint32_t portNum, uint32_t bitPos, gpioInterruptSense_t s
 }
 
 /**************************************************************************/
-/*! 
+/*!
     @brief Enables the interrupt mask for a specific port pin
 
     @param[in]  portNum
@@ -410,7 +415,7 @@ void gpioIntEnable (uint32_t portNum, uint32_t bitPos)
 }
 
 /**************************************************************************/
-/*! 
+/*!
     @brief Disables the interrupt mask for a specific port pin
 
     @param[in]  portNum
@@ -426,16 +431,16 @@ void gpioIntDisable (uint32_t portNum, uint32_t bitPos)
   switch (portNum)
   {
     case 0:
-      GPIO_GPIO0IE &= ~(0x1<<bitPos); 
+      GPIO_GPIO0IE &= ~(0x1<<bitPos);
       break;
     case 1:
-      GPIO_GPIO1IE &= ~(0x1<<bitPos);	
+      GPIO_GPIO1IE &= ~(0x1<<bitPos);
       break;
     case 2:
-      GPIO_GPIO2IE &= ~(0x1<<bitPos);	    
+      GPIO_GPIO2IE &= ~(0x1<<bitPos);
       break;
     case 3:
-      GPIO_GPIO3IE &= ~(0x1<<bitPos);	    
+      GPIO_GPIO3IE &= ~(0x1<<bitPos);
       break;
     default:
       break;
@@ -444,7 +449,7 @@ void gpioIntDisable (uint32_t portNum, uint32_t bitPos)
 }
 
 /**************************************************************************/
-/*! 
+/*!
     @brief Gets the interrupt status for a specific port pin
 
     @param[in]  portNum
@@ -472,14 +477,14 @@ uint32_t gpioIntStatus (uint32_t portNum, uint32_t bitPos)
     case 1:
       if (GPIO_GPIO1MIS & (0x1<<bitPos))
       {
-        regVal = 1;	
+        regVal = 1;
       }
       break;
     case 2:
       if (GPIO_GPIO2MIS & (0x1<<bitPos))
       {
         regVal = 1;
-      }		
+      }
       break;
     case 3:
       if (GPIO_GPIO3MIS & (0x1<<bitPos))
@@ -494,7 +499,7 @@ uint32_t gpioIntStatus (uint32_t portNum, uint32_t bitPos)
 }
 
 /**************************************************************************/
-/*! 
+/*!
     @brief Clears the interrupt for a port pin
 
     @param[in]  portNum
@@ -510,16 +515,16 @@ void gpioIntClear (uint32_t portNum, uint32_t bitPos)
   switch (portNum)
   {
     case 0:
-      GPIO_GPIO0IC |= (0x1<<bitPos); 
+      GPIO_GPIO0IC |= (0x1<<bitPos);
     break;
     case 1:
-      GPIO_GPIO1IC |= (0x1<<bitPos);	
+      GPIO_GPIO1IC |= (0x1<<bitPos);
     break;
     case 2:
-      GPIO_GPIO2IC |= (0x1<<bitPos);	    
+      GPIO_GPIO2IC |= (0x1<<bitPos);
     break;
     case 3:
-      GPIO_GPIO3IC |= (0x1<<bitPos);	    
+      GPIO_GPIO3IC |= (0x1<<bitPos);
     break;
     default:
       break;
@@ -528,7 +533,7 @@ void gpioIntClear (uint32_t portNum, uint32_t bitPos)
 }
 
 /**************************************************************************/
-/*! 
+/*!
     @brief Configures the internal pullup/down resistor for GPIO pins
            (only relevant for pins configured as inputs)
 
@@ -539,7 +544,7 @@ void gpioIntClear (uint32_t portNum, uint32_t bitPos)
     @param[in]  mode
                 The 'mode' that the pin should be set to, which must be
                 correspond to a value defined in gpioPullupMode_t
-    
+
     @warning    By default, all GPIO pins have the internal pull-up
                 resistor enabled.  This may cause unusual behaviour if
                 care isn't taken to set the internal resistor to an

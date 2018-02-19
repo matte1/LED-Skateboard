@@ -49,6 +49,7 @@
     will then try to configure itself accordingly for that board.
     -----------------------------------------------------------------------*/
     #define CFG_BRD_LPC1114_REFDESIGN
+   // #define CFG_BRD_LPC1114_BREADBOARD
 /*=========================================================================*/
 
 
@@ -92,8 +93,9 @@
 
     Note:           At 36MHz 1 tick = ~27.777ns or 0.02777us
     -----------------------------------------------------------------------*/
-    #ifdef CFG_BRD_LPC1114_REFDESIGN
-      #define CFG_CPU_CCLK              (36000000)
+    #if defined(CFG_BRD_LPC1114_REFDESIGN) || defined(CFG_BRD_LPC1114_BREADBOARD)
+      #define CFG_CPU_CCLK              (24000000)
+      #define CFG_CPU_CCLK_MULTIPLIER   (CFG_CPU_CCLK / 12000000)
     #endif
 /*=========================================================================*/
 
@@ -118,7 +120,7 @@
     chip actually supports power profiles, so these can be safely enabled
     on non L series MCUs.
     -----------------------------------------------------------------------*/
-    #ifdef CFG_BRD_LPC1114_REFDESIGN
+    #if defined(CFG_BRD_LPC1114_REFDESIGN) || defined(CFG_BRD_LPC1114_BREADBOARD)
       #define CFG_PMU_USEPOWERPROFILES  (1)
       #define CFG_PMU_POWERPROFILE      (pmuPowerProfile_Efficiency)
     #endif
@@ -140,7 +142,7 @@
     CFG_VREG_ALT_REG32    IOCON Register for the alt. output enable pin
 
     -----------------------------------------------------------------------*/
-    #ifdef CFG_BRD_LPC1114_REFDESIGN
+    #if defined(CFG_BRD_LPC1114_REFDESIGN) || defined(CFG_BRD_LPC1114_BREADBOARD)
       #define CFG_VREG_VCC_MAIN         (3300)    // 3.3V * 1000
       #define CFG_VREG_ALT_PRESENT      (0)
       #define CFG_VREG_ALT_PRESENT      (0)
@@ -159,8 +161,8 @@
                               of the systick timer.
 
     -----------------------------------------------------------------------*/
-    #ifdef CFG_BRD_LPC1114_REFDESIGN
-      #define CFG_SYSTICK_DELAY_IN_MS     (1)
+    #if defined(CFG_BRD_LPC1114_REFDESIGN) || defined(CFG_BRD_LPC1114_BREADBOARD)
+      #define CFG_SYSTICK_DELAY_IN_MS     (100)
       #define CFG_SYSTICK_100MS_DELAY     (100 / CFG_SYSTICK_DELAY_IN_MS)
     #endif
 /*=========================================================================*/
@@ -221,7 +223,7 @@
                               characters to store in memory.
 
     -----------------------------------------------------------------------*/
-    #ifdef CFG_BRD_LPC1114_REFDESIGN
+    #if defined(CFG_BRD_LPC1114_REFDESIGN) || defined(CFG_BRD_LPC1114_BREADBOARD)
       #define CFG_UART_BAUDRATE           (9600)
       #define CFG_UART_BUFSIZE            (128)
     #endif
@@ -243,7 +245,7 @@
                               average if ADC averaging is enabled.
 
     -----------------------------------------------------------------------*/
-    #ifdef CFG_BRD_LPC1114_REFDESIGN
+    #if defined(CFG_BRD_LPC1114_REFDESIGN) || defined(CFG_BRD_LPC1114_BREADBOARD)
       #define ADC_AVERAGING_ENABLE    (1)
       #define ADC_AVERAGING_SAMPLES   (5)
     #endif
@@ -262,8 +264,18 @@
     -----------------------------------------------------------------------*/
     #ifdef CFG_BRD_LPC1114_REFDESIGN
       #define CFG_LED
-      #define CFG_LED_PORT                (0)
-      #define CFG_LED_PIN                 (10)
+      // #define CFG_LED_PORT                (0)
+      // #define CFG_LED_PIN                 (10)
+      #define CFG_LED_PORT                (1)
+      #define CFG_LED_PIN                 (6)
+      #define CFG_LED_ON                  (10)
+      #define CFG_LED_OFF                 (0)
+    #endif
+
+    #ifdef CFG_BRD_LPC1114_BREADBOARD
+      #define CFG_LED
+      #define CFG_LED_PORT                (1)
+      #define CFG_LED_PIN                 (5)
       #define CFG_LED_ON                  (1)
       #define CFG_LED_OFF                 (0)
     #endif
@@ -307,9 +319,10 @@
 
     DEPENDENCIES:               SPI0
     -----------------------------------------------------------------------*/
+    #define CFG_W25QXX_MAX_ADDRESS (8388608UL)
+
     #ifdef CFG_BRD_LPC1114_REFDESIGN
       #define CFG_W25QXX
-      #define CFG_W25QXX_MAX_ADDRESS (8388608UL)
       #define CFG_W25QXX_DEBUG
     #endif
 /*=========================================================================*/
@@ -328,7 +341,7 @@
 
     NOTE: PRINTF Support =    ~350 bytes Flash (-Os)
     -----------------------------------------------------------------------*/
-    #ifdef CFG_BRD_LPC1114_REFDESIGN
+    #if defined(CFG_BRD_LPC1114_REFDESIGN) || defined(CFG_BRD_LPC1114_BREADBOARD)
       #define CFG_PRINTF_UART
       #define CFG_PRINTF_NEWLINE          "\r\n"
     #endif
@@ -351,7 +364,7 @@
                               CFG_PRINTF_UART or CFG_PRINTF_USBCDC are
                               selected.
     -----------------------------------------------------------------------*/
-    #ifdef CFG_BRD_LPC1114_REFDESIGN
+    #if defined(CFG_BRD_LPC1114_REFDESIGN) || defined(CFG_BRD_LPC1114_BREADBOARD)
       // #define CFG_INTERFACE
       #define CFG_INTERFACE_UART
       #define CFG_INTERFACE_MAXMSGSIZE    (256)
@@ -368,8 +381,8 @@
 
   =========================================================================*/
 
-#if !defined CFG_BRD_LPC1114_REFDESIGN && !defined CFG_BRD_LPC1114_802154WIRELESS
-  #error "You must defined a target board (CFG_BRD_LPC1114_REFDESIGN or CFG_BRD_LPC1114_802154WIRELESS)"
+#if !defined CFG_BRD_LPC1114_REFDESIGN && !defined CFG_BRD_LPC1114_BREADBOARD
+  #error "You must defined a target board (CFG_BRD_LPC1114_REFDESIGN or CFG_BRD_LPC1114_BREADBOARD)"
 #endif
 
 #endif

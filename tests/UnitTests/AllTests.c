@@ -21,11 +21,16 @@ int main(int argc,char *argv[])
 
 	TextUIRunner_start();
 	/*embunit:run=+ */
-		TextUIRunner_runTest(BNO0555Tests_tests());
-		TextUIRunner_runTest(W25QXXTests_tests());
-		TextUIRunner_runTest(LEDTests_tests());
-		TextUIRunner_runTest(MTK3339Tests_tests());
-		TextUIRunner_runTest(ULOGFSTests_tests());
+      #ifdef CFG_BRD_LPC1114_REFDESIGN
+		  TextUIRunner_runTest(BNO0555Tests_tests());
+        TextUIRunner_runTest(W25QXXTests_tests());
+        TextUIRunner_runTest(MTK3339Tests_tests());
+        TextUIRunner_runTest(ULOGFSTests_tests());
+        TextUIRunner_runTest(LEDTests_tests());
+      #endif
+
+      
+
 	/*embunit:run=- */
 	TextUIRunner_end();
 	return 0;

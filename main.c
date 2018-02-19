@@ -36,14 +36,24 @@
 #include "projectconfig.h"
 #include "sysinit.h"
 
+
 #include "core/gpio/gpio.h"
 #include "core/systick/systick.h"
-
-#include "core/cmd/cmd.h"
+#include "core/adc/adc.h"
+#include "core/uart/uart.h"
+#include "drivers/LED/LED.h"
 
 #include "drivers/sensors/bno055/bno055.h"
-#include "drivers/flash/w25qxx/w25qxx.h"
-#include "drivers/ulogfs/ulogfs.h"
+
+
+extern void ws2811_write(uint8_t *pixel_data, unsigned byte_cnt);
+extern void ws2812_write(uint8_t *pixel_data, unsigned byte_cnt);
+
+// TODO: Move this into its own file
+#define PXL_CNT 78
+static uint8_t LED_RED[]    = {0x00, 0x3F, 0x00};
+static uint8_t LED_ORANGE[] = {0x12, 0x3F, 0x00};
+static uint8_t LED_YELLOW[] = {0x24, 0x3F, 0x01};
 
 void testIMU()
 {
@@ -51,54 +61,79 @@ void testIMU()
    while (1) bno055ReadEuler(rpy);
 }
 
-// Option numero 1
-void backgroundTest(uint32_t runtime)
+/* Sets a string of neopixels based on yaw data. There is 90 pixels
+ * lining the inside of the skateboard. Each pixel is mapped to 4 degrees of
+ * rotation. To save time the yaw is shifted by 2 in order to divide by 4.
+ *
+ * Example: Yaw = 83, pixel_idx = 83>>2 = 20
+ */
+void testNeoPixel_Yaw()
 {
-   int ndx = 0;
+   static uint8_t pixel_data[90 * 3];
+   double rpy[3];
+   int pixel_idx = 0;
+   int counter = 1250;
 
-   uint8_t imuBuffer[17];
-   memset(imuBuffer, 0xF0, 17);
+   while (1) {
+      memset(pixel_data, 0x00, 270);
+      bno055ReadEuler(rpy);
 
-   for (ndx = 0; ndx < runtime; ndx++)
-   {
-      bno055PackageData(&imuBuffer[1]);
-      ulogBufferData(imuBuffer, 17);
-      systickDelay(1);
+      pixel_idx = (int)rpy[2] >> 2;
+      printf("Pixel idx: %d\n\r", pixel_idx);
+      pixel_data[pixel_idx * 3] = 0x3F;
+      ws2811_write((uint8_t *)&pixel_data[0], 270);
+
+      while (counter--) {
+         __asm volatile("NOP");
+      }
+
+      pixel_data[0]++;
+      counter = 1250;
    }
 }
 
-void testUlogfs()
+
+/* Sets LEDS racing down both sides of the skateboard.
+ *
+ * TODO: Figure out correct timing to get appx 40hz
+ */
+void testNeoPixel_RacingStripes()
 {
-   int ndx;
-   uint8_t buffer[256];
-   w25qEraseBlock(0);
-   ulogInit();
+   uint8_t pixels[PXL_CNT * 3];
+   int counter = 1250;
+   int idx;
 
-   // 5120 Bytes
-   ulogNewFile();
-   memset(buffer, 'A', 123);
-   for (ndx = 0; ndx < 40; ndx++)
-      ulogBufferData(buffer, 123);
-   ulogCloseFile();
+   while (1) {
 
-   ulogInit();
-   // 5120 Bytes
-   ulogNewFile();
-   memset(buffer, 'B', 256);
-   for (ndx = 0; ndx < 20; ndx++)
-      ulogBufferData(buffer, 256);
-   ulogCloseFile();
+      for (idx = PXL_CNT - 3; idx > PXL_CNT/2 - 2; idx--) {
+         memset(pixels, 0x00, PXL_CNT*3);
 
-   // 1792 bytes
-   ulogNewFile();
-   memset(buffer, 'C', 17);
-   for (ndx = 0; ndx < 100; ndx++)
-      ulogBufferData(buffer, 17);
-   ulogCloseFile();
 
-   ulogListFiles();
-   ulogPrintFileSystem();
+         // Left Side
+         memcpy(&pixels[idx*3], LED_RED,    3);
+         memcpy(&pixels[(idx+1)*3], LED_ORANGE, 3);
+         memcpy(&pixels[(idx+2)*3], LED_YELLOW,    3);
+         // Right Side
+         memcpy(&pixels[(PXL_CNT - idx + 2) * 3], LED_RED,    9);
+         memcpy(&pixels[(PXL_CNT - idx + 1) * 3], LED_ORANGE, 9);
+         memcpy(&pixels[(PXL_CNT - idx) * 3],     LED_YELLOW, 9);
+
+
+         ws2811_write((uint8_t *)pixels, PXL_CNT * 3);
+
+         // TODO: Put this into ws2811_utils.s
+         while (counter--) {
+            __asm volatile("NOP");
+         }
+
+         pixels[0]++;
+         counter = 1250;
+         systickDelay(1);
+      }
+   }
 }
+
+
 
 /**************************************************************************/
 /*!
@@ -108,40 +143,44 @@ void testUlogfs()
 /**************************************************************************/
 int main(void)
 {
-   // Configure cpu and peripherals
    systemInit();
-   systickDelay(CFG_SYSTICK_100MS_DELAY);
 
-   printf("HI Matt\n");
+   gpioSetDir(0, 10, gpioDirection_Output);
+   gpioSetValue(0, 10, 1);
 
-   // testUlogfs();
-
-   // while (1) {
-   //    ledBlink();
-   // }
-
-   // w25qEraseBlock(0);
-
-   testIMU();
-
-   // ulogInit();
-   // ulogNewFile();
-   // backgroundTest(500);
-   // ulogCloseFile();
-
-   // ulogNewFile();
-   // backgroundTest(100);
-   // ulogCloseFile();
+   // testNeoPixel_Yaw();
+   testNeoPixel_RacingStripes();
+   // int counter = 1250;
+   // // static uint8_t pixel_data[] = {
+   // //    0x00,0x3F,0x00, // red
+   // //    0x3F,0x3F,0x3F, // white
+   // //    0x00,0x00,0x3F, // blue
+   // //    0x3F,0x00,0x00, // green
+   // //    0x00,0x3F,0x00, // red
+   // //    0x3F,0x3F,0x3F, // white
+   // //    0x00,0x00,0x3F, // blue
+   // // };
+   // uint8_t pixel_data[180];
+   // int i = 0;
    //
-   // ulogNewFile();
-   // backgroundTest(10);
-   // ulogCloseFile();
-
-   // ulogPrintFileSystem();
-
-   // testIMU();
-   //testFlash();
-   //testGPS();
+   // memset(pixel_data, 0x00, 180);
+   //
+   // for (i = 0; i < 90; i++) {
+   //    if (i % 3 == 0) {
+   //       pixel_data[i] = 0xFF;
+   //    }
+   // }
+   //
+   // memset(pixel_data, 0x00, 3);
+   //
+   // while (1) {
+   //    ws2811_write((uint8_t *)&pixel_data[0], 90);
+   //    while (counter--) {
+   //       __asm volatile("NOP");
+   //    }
+   //    pixel_data[0]++;
+   //    counter = 3000;
+   // }
 
    return 0;
 }

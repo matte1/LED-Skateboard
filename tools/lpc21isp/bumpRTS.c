@@ -49,16 +49,20 @@ int openserial(char *devicename)
 
 int setRTS(int fd, int level)
 {
-    int status;
+    int status = 0;
 
     if (ioctl(fd, TIOCMGET, &status) == -1) {
         perror("setRTS(): TIOCMGET");
         return 0;
     }
-    if (level)
-        status |= TIOCM_RTS;
-    else
-        status &= ~TIOCM_RTS;
+
+   if (level) {
+      status |= TIOCM_CTS;
+   }
+    else {
+      status &= ~TIOCM_CTS;
+   }
+
     if (ioctl(fd, TIOCMSET, &status) == -1) {
         perror("setRTS(): TIOCMSET");
         return 0;
@@ -67,10 +71,10 @@ int setRTS(int fd, int level)
 }
 
 
-int main()
+int main(int argc, char **argv)
 {
     int fd;
-    char *serialdev = "/dev/ttyUSB0";
+    char *serialdev = argv[1];
 
     fd = openserial(serialdev);
     if (!fd) {
@@ -79,10 +83,9 @@ int main()
     }
 
     while (1) {
-    setRTS(fd, 0);
-    sleep(1);       /* pause 1 second */
-    setRTS(fd, 1);
-
+      setRTS(fd, 0);
+      sleep(2);       /* pause 1 second */
+      setRTS(fd, 1);
    }
 
     closeserial(fd);

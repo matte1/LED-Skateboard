@@ -14,7 +14,7 @@ SRAM = 4K
 SRAM_USB = 0
 
 VPATH =
-OBJS = main.o
+OBJS = main.o ws2811_utils.o
 
 ##########################################################################
 # Debug settings
@@ -57,6 +57,9 @@ OBJS += ulogfs.o
 
 VPATH += drivers/flash/w25qxx
 OBJS += w25qxx.o
+
+VPATH += drivers/LED
+OBJS += LED.o
 
 ##########################################################################
 # Library files
@@ -105,10 +108,13 @@ OUTFILE = firmware
 # Flash Configuration
 ##########################################################################
 UPLOAD = ./tools/lpc21isp/lpc21isp
-PORT = /dev/ttyUSB0
+PORT = /dev/usb2serial
+# PORT = /dev/ttyUSB1
+# PORT = /dev/ttyUSB2
 BAUD = 115200
 KFREQ = 1200
-ISP = -control -controlswap
+# ISP = -control -controlswap
+ISP = -control
 TERM = -termonly -logfile
 BAUDTERM = 9600
 

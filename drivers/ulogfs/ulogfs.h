@@ -14,10 +14,8 @@
 #include "drivers/sensors/bno055/bno055.h"
 #include "drivers/sensors/mtk3339/mtk3339.h"
 
-#ifdef CFG_W25QXX
-	#define BLOCKSIZE		W25Q_PAGESIZE
-	#define SECTORSIZE 	W25Q_SECTORSIZE
-#endif
+#define BLOCKSIZE		W25Q_PAGESIZE
+#define SECTORSIZE 	W25Q_SECTORSIZE
 
 /* Inode base space needed */
 #define ULOG_INODE_LEN		9
